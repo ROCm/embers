@@ -1,0 +1,90 @@
+name: CodeQL Analysis
+
+# This workflow runs on all pushes to and all PRs opened on `ajt/opensrc` (default branch)
+# If the default branch of the repository changes, this needs to be updated as well
+on:
+  push:
+    branches: [ "ajt/opensrc" ]
+  pull_request:
+    branches: [ "ajt/opensrc" ]
+
+env:
+  CODEQL_HOME: codeql-home
+  CODEQL_DB: codeqldb
+  CODEQL_RESULTS: codeql-results
+
+jobs:
+  run-codeql:
+    runs-on: codeql
+    steps:
+    - name: Mark current directory as safe
+      run: git config --global --add safe.directory $(pwd)
+
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up CodeQL
+      shell: bash
+      run: |
+        if [ ! -d "${{ env.CODEQL_HOME }}" ]; then
+          # Download CodeQL
+          curl -L https://github.com/github/codeql-cli-binaries/releases/download/v2.20.4/codeql-linux64.zip -o codeql-linux64.zip
+          # Create a folder for CodeQL
+          mkdir ${{ env.CODEQL_HOME }}
+          # Unzip the file in codeql-home folder
+          unzip codeql-linux64.zip -d ${{ env.CODEQL_HOME }} && rm codeql-linux64.zip
+          # Download queries and add them to the CodeQL home folder
+          git clone --recursive https://github.com/github/codeql.git ${{ env.CODEQL_HOME }}/codeql-repo
+        fi
+        export PATH="$PATH:${{ env.CODEQL_HOME }}/codeql"
+        # Check the configuration
+        codeql resolve languages
+        codeql resolve qlpacks
+      
+    - name: Create the CodeQL database
+      shell: bash
+      run: |
+        export PATH="$PATH:${{ env.CODEQL_HOME }}/codeql"
+        # Create a database of the code with a manual build command
+        CXX=/opt/rocm/bin/hipcc CMAKE_PREFIX_PATH=/opt/rocm codeql database create ${{ env.CODEQL_DB }} \
+          --language=c-cpp \
+          --overwrite \
+          --command="cmake -S ${{ github.workspace }} -B ${{ github.workspace }}/build"
+
+    - name: Query the database
+      shell: bash
+      run: |
+        export PATH="$PATH:${{ env.CODEQL_HOME }}/codeql"
+        export CODEQL_SUITES_PATH="${{ env.CODEQL_HOME }}/codeql-repo/cpp/ql/src/codeql-suites/"
+        # Get the amd-cpp-must-fix query from Artifactory
+        wget https://mkmartifactory.amd.com:8443/artifactory/system-provisioning/CodeQL/amd-cpp-must-fix.qls \
+          --directory-prefix $CODEQL_SUITES_PATH
+        # Create a folder for the scan results
+        mkdir -p ${{ env.CODEQL_RESULTS }}
+        # Run the CodeQL analysis on the database and save the output to a SARIF file
+        codeql database analyze ${{ env.CODEQL_DB }} $CODEQL_SUITES_PATH/amd-cpp-must-fix.qls \
+          --format=sarifv2.1.0 \
+          --output="${{ env.CODEQL_RESULTS }}/cpp-code-scanning.sarif"
+
+    - name: Upload SARIF
+      shell: bash
+      env:
+        GH_PAT: ${{ secrets.DCGPUEX_GH_TOKEN }}
+      run: |
+        export PATH="$PATH:${{ env.CODEQL_HOME }}/codeql"
+        # Upload results of scan to GitHub
+        echo ${{ env.GH_PAT }} | codeql github upload-results \
+          --github-url=https://github.amd.com \
+          --repository=${{ github.repository }} \
+          --ref=${{ github.ref }} \
+          --commit=${{ github.sha }} \
+          --sarif="${{ env.CODEQL_RESULTS }}/cpp-code-scanning.sarif" \
+          --github-auth-stdin
+    
+    - name: Clean up
+      shell: bash
+      run: |
+        if [ -d "${{ env.CODEQL_DB }}" ]; then rm -rf ${{ env.CODEQL_DB }}; fi
+        if [ -d "${{ env.CODEQL_RESULTS }}" ]; then rm -rf ${{ env.CODEQL_RESULTS }}; fi
+        if [ -d "${{ env.CODEQL_HOME }}" ]; then rm -rf ${{ env.CODEQL_HOME }}; fi
+        

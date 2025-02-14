@@ -1,0 +1,32 @@
+# vim: set ft=yaml :
+---
+BasedOnStyle: Google
+ColumnLimit: 100
+
+# Break before braces on function, namespace, and class definitions
+BreakBeforeBraces: Linux
+
+# This will re-order includes and break our build so turn it off
+SortIncludes: false
+
+# Reduce likelihood of:
+#
+# auto var = expr...
+#
+# to:
+#
+# auto var =
+# <INDENT>expr...
+#
+PenaltyBreakAssignment: 666666
+
+# Reduce likelihood of:
+#
+# call_function(args...)
+#
+# to:
+#
+# call_function(
+# <INDENT>args...)
+#
+PenaltyBreakBeforeFirstCallParameter: 666666

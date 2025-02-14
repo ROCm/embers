@@ -1,0 +1,7 @@
+# Copyright © 2020 Advanced Micro Devices, Inc. All rights reserved
+
+
+sphinx>=5.0.0
+breathe
+exhale
+sphinx-rtd-theme

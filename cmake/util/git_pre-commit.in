@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Copyright © 2020 Advanced Micro Devices, Inc. All rights reserved
+
+shopt -s extglob
+
+GIT=${GIT_EXECUTABLE}
+CLANG_FORMAT=${CLANG_FORMAT}
+
+if ! [[ -e $PWD/.clang-format ]]; then
+    exit 0
+fi
+
+files=$($GIT diff --cached --name-only --diff-filter=ACMR !(external))
+
+for file in $files; do
+    for ext in c cc cpp h hpp ipp frag vert glsl ispc ih; do
+        if [[ "$file" == *.$ext ]]; then
+            # We run clang-format only in files that are fully staged and warn
+            # about the others
+            if [[ $($GIT diff --name-only "$file") == "$file" ]]; then
+                echo "clang-format not run on partially added file $file"
+            else
+                $CLANG_FORMAT -i -style=file -fallback-style=none $PWD/$file
+                $GIT add $file
+            fi
+            break;
+        fi
+    done
+done
