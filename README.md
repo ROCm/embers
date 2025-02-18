@@ -15,7 +15,7 @@
   <p align="center">
     A header-only HIP library with a slew of user-focused features for GPU test development
     <br />
-    <a href="https://github.com/pages/ROCm/embers/index.html"<strong>Explore the docs »</strong></a>
+    <a href="https://rocm.github.io/embers/"<strong>Explore the docs »</strong></a>
     <br />
     <br />
     <a href="https://github.com/ROCm/embers/issues/new?labels=bug&template=bug-report---.md">Report a Bug</a>
