@@ -9,8 +9,12 @@ project(
 embers
 VERSION ${EMBERS_VERSION}
 DESCRIPTION "A header-only HIP library with a slew of user-focused features for GPU test development"
-LANGUAGES CXX HIP
 )
+
+enable_language(CXX)
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.21.0")
+  enable_language(HIP)
+endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -33,6 +37,10 @@ target_include_directories(${PROJECT_NAME}
 )
 target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_20)
 
+# This is only necessary if LANUAGES HIP is not supported
+if(CMAKE_VERSION VERSION_LESS "3.21.0")
+  target_link_libraries(${PROJECT_NAME} INTERFACE hip::device)
+endif()
 
 
 # Testing only available if this is the main app
